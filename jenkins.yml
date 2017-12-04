@@ -1,0 +1,58 @@
+--- 
+
+- hosts: jenkins0 
+  vars:
+  #remote_user: root
+
+  tasks: ################################
+
+  - name: SSH Config Permit Root Login
+    lineinfile:
+      name:   /etc/ssh/sshd_config
+      state:  present 
+      regexp: '^.*PermitRootLogin yes'
+      line:   'PermitRootLogin yes'
+
+  - name: Firewall Config
+    firewalld:
+      zone:      public
+      port:      '8080/tcp'
+      permanent: true
+      immediate: true
+      state:     enabled
+
+  - name: Install wget
+    yum:
+      name: wget
+    become: true
+
+  - name: Install JDK
+    yum:
+      name: /src/jdk-8u144-linux-x64.rpm
+    become: true
+
+  - name: Get Jenkins
+    shell: wget -O /etc/yum.repos.d/jenkins.repo http://jenkins-ci.org/redhat/jenkins.repo
+    become: true
+
+  - name: Install Jenkins Repo Key
+    shell: rpm --import http://pkg.jenkins-ci.org/redhat/jenkins-ci.org.key
+    become: true
+
+  - name: Install Jenkins
+    yum:
+      name: jenkins
+    become: true
+
+  - name: Enable Jenkins Service at Startup
+    shell: systemctl enable jenkins
+    become: true
+    notify: Restart Jenkins
+
+  handlers: #############################
+
+  - name: Restart Jenkins 
+    service:
+      name:  jenkins
+      state: restarted
+    become: true

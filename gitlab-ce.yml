@@ -1,0 +1,41 @@
+---
+
+- hosts: gitlab0
+  vars:
+  #remote_user: root
+
+  tasks:
+
+  - name: SSH Config Permit Root Login
+    lineinfile:
+      name:   /etc/ssh/sshd_config
+      state:  present 
+      regexp: '^.*PermitRootLogin yes'
+      line:   'PermitRootLogin yes'
+
+  - name: Firewall Config
+    firewalld:
+      zone:      public
+      port:      '80/tcp'
+      permanent: true
+      immediate: true
+      state:     enabled
+
+  - name: Pull Gitlab
+    shell:  curl -sS https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.rpm.sh | sudo bash 
+    become: true 
+
+  - name: Install Git
+    yum:
+      name: git
+    become: true
+
+  - name: Install GitLab
+    yum:
+      name: gitlab-ce
+    become: true
+
+  - name: Configure Gitlab
+    shell:  gitlab-ctl reconfigure
+    become: true 
+

@@ -1,0 +1,59 @@
+---
+
+- hosts: zero
+  vars:
+  #remote_user: root
+
+  tasks:
+
+  - name: Create user
+    user:
+      name: rcompos
+      comment: 'Ron Compos'
+      groups: wheel
+
+  - name: Create yum repo file for Google Chrome
+    blockinfile:
+      path: /etc/yum.repos.d/google-chrome.repo
+      create: yes
+      insertbefore: BOF
+      block: |
+        [google-chrome]
+        name=google-chrome
+        baseurl=http://dl.google.com/linux/chrome/rpm/stable/$basearch
+        enabled=1
+        gpgcheck=1
+        gpgkey=https://dl-ssl.google.com/linux/linux_signing_key.pub
+
+  - name: Install Google Chrome Stable
+    yum:
+      name: google-chrome-stable
+    become: true
+
+
+#  - name: SSH Config Permit Root Login
+#    lineinfile:
+#      name:   /etc/ssh/sshd_config
+#      state:  present 
+#      regexp: '^.*PermitRootLogin yes'
+#      line:   'PermitRootLogin yes'
+
+#  - name: Firewall Config
+#    firewalld:
+#      zone:      public
+#      port:      '80/tcp'
+#      permanent: true
+#      immediate: true
+#      state:     enabled
+
+#  - name: Install Git
+#    yum:
+#      name: git
+#    become: true
+
+#  - name: Configure Gitlab
+#    shell: gitlab-ctl reconfigure
+#    become: true 
+
+# Make Gnome desktop icons smaller
+# gsettings set org.gnome.nautilus.icon-view default-zoom-level small
