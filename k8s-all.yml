@@ -1,0 +1,138 @@
+---
+# Kubernetes on CentOS
+# Common Configuration for Master and Minions
+# https://kubernetes.io/docs/getting-started-guides/centos/centos_manual_config/
+
+- hosts: zero,kube*
+  vars:
+    etc_kubernetes_config: /etc/kubernetes/config
+  #remote_user: root
+
+  tasks:
+
+  - name: Role Facts
+    set_fact:
+      block_device: '/dev/sdb'
+      kube_master: 'zero'
+      docker_repo: virt7-docker-common-release.repo
+
+  - name: Get SELinux state
+    shell: getenforce
+    register: result
+  
+  - debug: msg="System reboot required to disable SELinux.  SELinux{{":"}} {{result.stdout}}"
+    when: result.stdout != "Disabled"
+  
+  - name: SELinux Permissive
+    selinux:
+      state: disabled
+    register: selinux_result
+  
+  - name: Disable Service Firewalld
+    service:
+      name: firewalld
+      enabled: no
+      state: stopped
+  
+  - name: Check if EPEL Repo Configured
+    stat: path=/etc/yum.repos.d/epel.repo
+    register: epel_repofile_result
+  
+  - name: Install EPEL Repo
+    yum:
+      name: https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+      state: present
+    register: result
+    when: not epel_repofile_result.stat.exists
+  
+  - name: Import EPEL GPG key
+    rpm_key:
+      key: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7
+      state: present
+    when: not epel_repofile_result.stat.exists
+  
+  - name: Install RPM
+    yum:
+      name: yum-utils
+    become: true
+  
+#  - name: Add Docker Repo
+#    shell: |
+#      yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+#    become: true
+
+  - name: Copy Docker Repo File
+    # Specified in K8s centos guide 
+    copy:
+      src: "{{ docker_repo }}"
+      dest: "/etc/yum.repos.d/{{ docker_repo }}"
+      owner: root
+      group: root
+      mode: 0644
+
+  - name: Install RPMs
+    yum:
+      name: "{{ item }}"
+    with_items:
+      #- device-mapper-persistent-data
+      #- lvm2
+      - bind-utils
+      - net-tools
+      - fortune-mod
+      - cowsay
+      - tree
+      - kubernetes
+      - etcd
+      - flannel
+      # - container-storage-setup
+    become: true
+
+  - name: Ugrade All Packages
+    yum:
+      name: '*'
+      state: latest
+  
+#  - name: Check for LVM Physical Volume "{{ block_device }}"
+#    shell: pvs | grep "{{ block_device }}"
+#    register: result
+#    ignore_errors: true
+  
+#  - name: Configure LVM Thin Pool
+#    shell: |
+#      echo DEVS="{{ block_device }}" > /etc/sysconfig/docker-storage-setup
+#      container-storage-setup
+#    become: true
+#    when: result.rc != 0
+  
+#  - name: Enable Service Docker
+#    service:
+#      name: docker
+#      enabled: yes
+#      state: started
+  
+  - name: Configure Login Banner
+    script: fortune_cowsy.sh
+  
+  - name: Copy MOTD
+    copy:
+      src: motd-k8s.txt
+      dest: /etc/motd
+      owner: root
+      group: root
+      mode: 0644
+
+  - name: Edit /etc/kubernetes/config
+    lineinfile:
+      path: /etc/kubernetes/config
+      regexp: '^KUBE_MASTER='
+      line: "KUBE_MASTER=\"--master=http://{{ kube_master }}:8080\""
+    #notify: Restart Docker
+
+  - name: Slurp File "{{ etc_kubernetes_config }}"
+    slurp:
+      src: "{{ etc_kubernetes_config }}"
+    register: slurpfile
+  
+  - name: Print File "{{ etc_kubernetes_config }}" 
+    debug: msg="{{ (slurpfile['content']|b64decode).split('\n') }}"
+
