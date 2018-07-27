@@ -1,6 +1,6 @@
 ---
 
-- hosts: zero
+- hosts: zero,kube0
   vars:
   #remote_user: root
 

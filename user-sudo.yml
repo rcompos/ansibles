@@ -1,0 +1,26 @@
+---
+
+- hosts: '*'
+  vars:
+    user: solidfire
+  #remote_user: root
+  gather_facts: False
+
+  tasks:
+
+  - name: Allow Passwordless Sudo for "{{ user }}"
+    lineinfile:
+      dest: /etc/sudoers
+      state: present
+      regexp: "^{{ user }}"
+      line: "{{ user }} ALL=(ALL) NOPASSWD: ALL"
+      insertafter: '^%sudo	ALL=(ALL:ALL) ALL'
+      validate: 'visudo -cf %s'
+    become: true
+
+  - name: Set authorized key took from file
+    authorized_key:
+      user: "{{ user }}"
+      state: present
+      key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+

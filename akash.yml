@@ -1,0 +1,48 @@
+---
+
+- hosts: 'dogoflowv1.one.den.solidfire.net'
+  vars:
+    dir_src:  "~/srv/files/test.txt"
+    dir_dest: "/tmp"
+
+  tasks:
+  
+  #- name: Role Facts
+  #  set_fact:
+  #    dir_dest: "/tmp"
+  
+  - name: Install tree
+    package:
+      name: "{{ item }}"
+      state: present
+    with_items:
+      - tree
+      - golang
+    become: true
+  
+  - name: Copy File
+    copy:
+      #src: "{{ dir_src }}"
+      src: "akash.txt"
+      dest: "{{ dir_dest }}"
+      owner: "{{ ansible_env.USER }}"
+      group: "{{ ansible_env.USER }}"
+      mode: 0644
+  
+  - name: Edit file
+    lineinfile:
+      path: /tmp/test.txt
+      regexp: '^Hello'
+      line:    'Goodbye!'
+    ignore_errors: true
+  
+  #- name: Get remote jdk rpms
+  #  get_url:
+  #    url: "{{ jdk_url }}/{{ item.value.file }}"
+  #    dest: "{{ jdk_staging }}/{{ item.value.file }}"
+  #    checksum: "{{ item.value.checksum }}"
+  #  with_dict: "{{ jdk_files }}"
+  #  become: true
+  #  # when: item.value.file
+  #  when: jdk_source_check.result
+
